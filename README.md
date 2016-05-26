@@ -1,8 +1,8 @@
-# 4 - Authenticating users
+# 5 - Logging app events
 
-This folder contains the sample code for the [Authenticating users][step-4]
+This folder contains the sample code for the [Logging app events][step-5]
 tutorial. Please refer to the tutorial for instructions on configuring, running,
 and deploying this sample.
 
-[step-4]: https://cloud.google.com/php/getting-started/authenticate-users
+[step-5]: https://cloud.google.com/php/getting-started/logging-application-events
 

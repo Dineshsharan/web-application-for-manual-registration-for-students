@@ -162,6 +162,11 @@ $app->post('/books/{id}/delete', function ($id) use ($app) {
             $storage->deleteFile($book['imageUrl']);
         }
         // [END delete_image]
+
+        // [START logging]
+        $app['monolog']->notice('Deleted Book: ' . $book['id']);
+        // [END logging]
+
         return $app->redirect('/books/', Response::HTTP_SEE_OTHER);
     }
 
@@ -223,3 +228,7 @@ $app->get('/logout', function () use ($app) {
     return new Response('', Response::HTTP_FOUND, ['Location' => '/']);
 })->bind('logout');
 # [END logout]
+
+$app->get('/_ah/health', function (Request $request) use ($app) {
+    return 'OK';
+});

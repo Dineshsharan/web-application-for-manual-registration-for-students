@@ -20,6 +20,7 @@
  * Create a new Silex Application with Twig.  Configure it for debugging.
  * Follows Silex Skeleton pattern.
  */
+use Google\Cloud\Logger\AppEngineFlexHandler;
 use Silex\Application;
 use Silex\Provider\SessionServiceProvider;
 use Silex\Provider\TwigServiceProvider;
@@ -57,6 +58,16 @@ $app['user'] = function ($app) {
     return $session->has('user') ? $session->get('user') : null;
 };
 // [END session]
+
+// add AppEngineFlexHandler on prod
+// [START logging]
+$app->register(new Silex\Provider\MonologServiceProvider());
+if (isset($_SERVER['GAE_VM']) && $_SERVER['GAE_VM'] === 'true') {
+    $app['monolog.handler'] = new AppEngineFlexHandler();
+} else {
+    $app['monolog.handler'] = new Monolog\Handler\ErrorLogHandler();
+}
+// [END logging]
 
 // create the google authorization client
 // [START google_client]

@@ -337,4 +337,16 @@ class ControllersTest extends WebTestCase
 
         $this->assertNull($this->app['session']->get('user'));
     }
+
+    public function testHealthCheck()
+    {
+        $client = $this->createClient();
+        $client->followRedirects();
+        $crawler = $client->request('GET', '/_ah/health');
+
+        $response = $client->getResponse();
+
+        $this->assertEquals(200, $response->getStatusCode());
+        $this->assertEquals('OK', $response->getContent());
+    }
 }
