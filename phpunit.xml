@@ -25,7 +25,7 @@
     </logging>
     <filter>
         <whitelist>
-             <directory suffix=".php">./web</directory>
+             <directory suffix=".php">./src</directory>
         </whitelist>
     </filter>
 </phpunit>

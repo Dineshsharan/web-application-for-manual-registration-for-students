@@ -17,6 +17,8 @@
 
 namespace Google\Cloud\Samples\Bookshelf;
 
+use Symfony\Component\Yaml\Yaml;
+
 /**
  * Class GetConfigTrait
  * @package Google\Cloud\Samples\Bookshelf
@@ -27,11 +29,12 @@ trait GetConfigTrait
 {
     protected static function getConfig()
     {
+        // allow the setting of environment variables for testing
         $config = array(
             'google_client_id' => getenv('GOOGLE_CLIENT_ID'),
             'google_client_secret' => getenv('GOOGLE_CLIENT_SECRET'),
             'google_project_id' => getenv('GOOGLE_PROJECT_ID'),
-            'bookshelf_backend' => 'cloudsql',
+            'bookshelf_backend' => getenv('BOOKSHELF_BACKEND') ?: 'cloudsql',
             'mysql_dsn' => getenv('MYSQL_DSN'),
             'mysql_user' => getenv('MYSQL_USER'),
             'mysql_password' => getenv('MYSQL_PASSWORD'),
@@ -39,6 +42,12 @@ trait GetConfigTrait
             'mongo_database' => getenv('MONGO_DATABASE'),
             'mongo_collection' => getenv('MONGO_COLLECTION'),
         );
+
+        // if a local config exists, use it
+        if (file_exists($f = __DIR__ . '/../../config/settings.yml')) {
+            $settings = Yaml::parse(file_get_contents($f));
+            $config = array_merge($settings, array_filter($config));
+        }
 
         return $config;
     }

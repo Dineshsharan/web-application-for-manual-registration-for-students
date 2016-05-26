@@ -1,13 +1,12 @@
 <?php
-
 /*
- * Copyright 2015 Google Inc.
+ * Copyright 2015 Google Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,24 +15,43 @@
  * limitations under the License.
  */
 
-// [START index_php]
+use Google\Cloud\Samples\Bookshelf\DataModel\CloudSql;
+use Google\Cloud\Samples\Bookshelf\DataModel\Datastore;
+use Google\Cloud\Samples\Bookshelf\DataModel\MongoDb;
+
 require_once __DIR__ . '/../vendor/autoload.php';
 
-$app = new Silex\Application();
+/** @var Silex\Application $app */
+$app = require __DIR__ . '/../src/app.php';
+require __DIR__ . '/../src/controllers.php';
 
-$app->get('/', function () {
-    return 'Hello World';
-});
+/** @var array $config */
+$config = $app['config'];
 
-$app->get('/goodbye', function () {
-    return 'Goodbye World';
-});
-
-// @codeCoverageIgnoreStart
-if (PHP_SAPI != 'cli') {
-    $app->run();
+// Data Model
+switch ($config['bookshelf_backend']) {
+    case 'mongodb':
+        $app['bookshelf.model'] = new MongoDb(
+            $config['mongo_url'],
+            $config['mongo_database'],
+            $config['mongo_collection']
+        );
+        break;
+    case 'datastore':
+        $app['bookshelf.model'] = new Datastore(
+            $config['google_project_id']
+        );
+        break;
+    case 'cloudsql':
+        $app['bookshelf.model'] = new CloudSql(
+            $config['mysql_dsn'],
+            $config['mysql_user'],
+            $config['mysql_password']
+        );
+        break;
+    default:
+        throw new Exception("Invalid BOOKSHELF_DATA_BACKEND given: $config[bookshelf_backend]. "
+            . "Possible values are cloudsql, mongodb, or datastore.");
 }
-// @codeCoverageIgnoreEnd
 
-return $app;
-// [END index_php]
+$app->run();
