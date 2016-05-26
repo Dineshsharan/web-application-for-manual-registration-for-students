@@ -21,7 +21,9 @@
  * Follows Silex Skeleton pattern.
  */
 use Silex\Application;
+use Silex\Provider\SessionServiceProvider;
 use Silex\Provider\TwigServiceProvider;
+use Silex\Provider\UrlGeneratorServiceProvider;
 use Symfony\Component\Yaml\Yaml;
 
 $app = new Application();
@@ -34,11 +36,41 @@ $app->register(new TwigServiceProvider(), array(
     ),
 ));
 
+// register the url generator
+$app->register(new UrlGeneratorServiceProvider);
+
 // parse configuration
 $config = getenv('BOOKSHELF_CONFIG') ?:
     __DIR__ . '/../config/' . 'settings.yml';
 
 $app['config'] = Yaml::parse(file_get_contents($config));
+
+// register the session handler
+// [START session]
+$app->register(new SessionServiceProvider);
+// fall back on PHP's "session.save_handler" for session storage
+$app['session.storage.handler'] = null;
+$app['user'] = function ($app) {
+    /** @var Symfony\Component\HttpFoundation\Session\Session $session */
+    $session = $app['session'];
+
+    return $session->has('user') ? $session->get('user') : null;
+};
+// [END session]
+
+// create the google authorization client
+// [START google_client]
+$app['google_client'] = function ($app) {
+    /** @var Symfony\Component\Routing\Generator\UrlGenerator $urlGen */
+    $urlGen = $app['url_generator'];
+    $redirectUri = $urlGen->generate('login_callback', [], $urlGen::ABSOLUTE_URL);
+    return new Google_Client([
+        'client_id'     => $app['config']['google_client_id'],
+        'client_secret' => $app['config']['google_client_secret'],
+        'redirect_uri'  => $redirectUri,
+    ]);
+};
+// [END google_client]
 
 // Turn on debug locally
 if (in_array(@$_SERVER['REMOTE_ADDR'], ['127.0.0.1', 'fe80::1', '::1'])

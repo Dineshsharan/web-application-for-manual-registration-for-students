@@ -76,6 +76,10 @@ $app->post('/books/add', function (Request $request) use ($app) {
         $book['publishedDate'] = $d->setTimezone(
             new \DateTimeZone('UTC'))->format("Y-m-d\TH:i:s\Z");
     }
+    if ($app['user']) {
+        $book['createdBy'] = $app['user']['name'];
+        $book['createdById'] = $app['user']['id'];
+    }
     $id = $model->create($book);
 
     return $app->redirect("/books/$id");
@@ -164,3 +168,58 @@ $app->post('/books/{id}/delete', function ($id) use ($app) {
     return new Response('', Response::HTTP_NOT_FOUND);
 });
 // [END delete]
+
+# [START login]
+$app->get('/login', function () use ($app) {
+    /** @var Google_Client $client */
+    $client = $app['google_client'];
+
+    $scopes = [ \Google_Service_Oauth2::USERINFO_PROFILE ];
+    $authUrl = $client->createAuthUrl($scopes);
+
+    return $app->redirect($authUrl);
+})->bind('login');
+# [END login]
+
+# [START login_callback]
+$app->get('/login/callback', function () use ($app) {
+    /** @var Request $request */
+    $request = $app['request'];
+
+    if (!$code = $request->query->get('code')) {
+        return new Response('Code required', Response::HTTP_BAD_REQUEST);
+    }
+
+    /** @var Google_Client $client */
+    $client = $app['google_client'];
+    $authResponse = $client->fetchAccessTokenWithAuthCode($code);
+
+    if ($client->getAccessToken()) {
+        $userInfo = $client->verifyIdToken();
+
+        /** @var Symfony\Component\HttpFoundation\Session\Session $session */
+        $session = $app['session'];
+        $session->set('user', [
+            'id'      => $userInfo['sub'],
+            'name'    => $userInfo['name'],
+            'picture' => $userInfo['picture'],
+        ]);
+
+        return new Response('', Response::HTTP_FOUND, ['Location' => '/']);
+    }
+
+    // an error occured while trying to authorize - display it
+    return new Response($authResponse['error_description'], 400);
+
+})->bind('login_callback');
+# [END login_callback]
+
+# [START logout]
+$app->get('/logout', function () use ($app) {
+    /** @var Symfony\Component\HttpFoundation\Session\Session $session */
+    $session = $app['session'];
+    $session->remove('user');
+
+    return new Response('', Response::HTTP_FOUND, ['Location' => '/']);
+})->bind('logout');
+# [END logout]

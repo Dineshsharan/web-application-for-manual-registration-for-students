@@ -52,6 +52,7 @@ class ControllersTest extends WebTestCase
         $app['bookshelf.page_size'] = 1;
         $app['bookshelf.storage'] = new FakeFileStorage();
         $app['monolog.handler'] = new TestHandler();
+        $app['session.test'] = true;
 
         return $app;
     }
@@ -208,5 +209,132 @@ class ControllersTest extends WebTestCase
         $this->assertEquals(404, $client->getResponse()->getStatusCode());
         $client->submit($submitButton->form());
         $this->assertEquals(404, $client->getResponse()->getStatusCode());
+    }
+
+    public function testAddBookWhenLoggedIn()
+    {
+        $client = $this->createClient();
+
+        // set the logged-in user info on the request
+        $userInfo = [
+            'id'      => 'fake-id',
+            'name'    => 'Tester Joe',
+            'picture' => null
+        ];
+
+        $this->app['session']->set('user', $userInfo);
+        $crawler = $client->request('GET', '/books/');
+
+        $editLink = $crawler
+            ->filter('a:contains("Add")') // find all links with the text "Add"
+            ->link();
+
+        // and click it
+        $crawler = $client->click($editLink);
+
+        // Fill the form and submit it.
+        $submitButton = $crawler->selectButton('submit');
+        $form = $submitButton->form();
+
+        $crawler = $client->submit($form, array(
+            'title' => 'Gödel, Escher, Bach',
+            'author' => 'Douglas Hofstadter',
+            'publishedDate' => '1979',
+        ));
+
+        // get the created book ID and read it
+        $url = $client->getResponse()->headers->get('location');
+        $id = str_replace('/books/', '', $url);
+        $book = $this->app['bookshelf.model']->read($id);
+        $this->assertNotEquals(false, $book);
+        $this->assertArrayHasKey('createdBy', $book);
+        $this->assertEquals($userInfo['name'], $book['createdBy']);
+        $this->assertArrayHasKey('createdById', $book);
+        $this->assertEquals($userInfo['id'], $book['createdById']);
+        // clean up
+        $this->app['bookshelf.model']->delete($id);
+        $book = $this->app['bookshelf.model']->read($id);
+        $this->assertEquals(false, $book);
+    }
+
+    public function testLogin()
+    {
+        $client = $this->createClient();
+        $crawler = $client->request('GET', '/books/');
+        $loginLink = $crawler->filter('a:contains("Login")')->link();
+
+        $crawler = $client->click($loginLink);
+        $response = $client->getResponse();
+        $this->assertEquals(302, $response->getStatusCode());
+        $url = $response->headers->get('Location');
+        $this->assertNotNull($url);
+
+        $parts = parse_url($url);
+        parse_str($parts['query'], $query);
+
+        $this->assertArrayHasKey('response_type', $query);
+        $this->assertArrayHasKey('client_id', $query);
+        $this->assertArrayHasKey('redirect_uri', $query);
+        $this->assertArrayHasKey('state', $query);
+        $this->assertArrayHasKey('scope', $query);
+
+        $this->assertEquals('code', $query['response_type']);
+        $this->assertEquals('http://localhost/login/callback', $query['redirect_uri']);
+    }
+
+    public function testLoginCallback()
+    {
+        $client = $this->createClient();
+        $crawler = $client->request('GET', '/login/callback');
+
+        $response = $client->getResponse();
+        $this->assertEquals(400, $response->getStatusCode());
+        $this->assertEquals('Code required', (string) $response->getContent());
+
+        $crawler = $client->request('GET', '/login/callback?code=123');
+
+        $response = $client->getResponse();
+        $this->assertEquals(400, $response->getStatusCode());
+
+        $idToken = [
+            'sub' => 'fake-id',
+            'name' => 'Fake Name',
+            'picture' => null
+        ];
+        $googleClient = $this->getMock('Google_Client');
+        $googleClient->expects($this->once())
+            ->method('fetchAccessTokenWithAuthCode')
+            ->will($this->returnValue(true));
+        $googleClient->expects($this->once())
+            ->method('getAccessToken')
+            ->will($this->returnValue(['access_token' => 'xyz']));
+        $googleClient->expects($this->once())
+            ->method('verifyIdToken')
+            ->will($this->returnValue($idToken));
+
+        $this->app['google_client'] = $googleClient;
+        $crawler = $client->request('GET', '/login/callback?code=123');
+
+        $userInfo = $this->app['session']->get('user');
+
+        $this->assertNotNull($userInfo);
+        $this->assertArrayHasKey('id', $userInfo);
+        $this->assertEquals($idToken['sub'], $userInfo['id']);
+    }
+
+    public function testLogout()
+    {
+        $client = $this->createClient();
+
+        // set the logged-in user info on the request
+        $userInfo = [
+            'id' => 'fake-id',
+        ];
+        $this->app['session']->set('user', $userInfo);
+
+        // make the request
+        $crawler = $client->request('GET', '/logout');
+
+        $this->assertNull($this->app['session']->get('user'));
     }
 }
