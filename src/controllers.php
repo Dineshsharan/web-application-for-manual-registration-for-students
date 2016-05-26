@@ -24,6 +24,7 @@ namespace Google\Cloud\Samples\Bookshelf;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Google\Cloud\Samples\Bookshelf\DataModel\DataModelInterface;
+use Google\Cloud\Samples\Bookshelf\FileSystem\CloudStorage;
 
 $app->get('/', function (Request $request) use ($app) {
     return $app->redirect('/books/');
@@ -59,7 +60,17 @@ $app->get('/books/add', function () use ($app) {
 $app->post('/books/add', function (Request $request) use ($app) {
     /** @var DataModelInterface $model */
     $model = $app['bookshelf.model'];
+    /** @var CloudStorage $storage */
+    $storage = $app['bookshelf.storage'];
+    $files = $request->files;
     $book = $request->request->all();
+    $image = $files->get('image');
+    if ($image && $image->isValid()) {
+        $book['imageUrl'] = $storage->storeFile(
+            $image->getRealPath(),
+            $image->getMimeType()
+        );
+    }
     if (!empty($book['publishedDate'])) {
         $d = new \DateTime($book['publishedDate']);
         $book['publishedDate'] = $d->setTimezone(
@@ -106,8 +117,20 @@ $app->get('/books/{id}/edit', function ($id) use ($app) {
 $app->post('/books/{id}/edit', function (Request $request, $id) use ($app) {
     $book = $request->request->all();
     $book['id'] = $id;
+    /** @var CloudStorage $storage */
+    $storage = $app['bookshelf.storage'];
     /** @var DataModelInterface $model */
     $model = $app['bookshelf.model'];
+    // [START add_image]
+    $files = $request->files;
+    $image = $files->get('image');
+    if ($image && $image->isValid()) {
+        $book['imageUrl'] = $storage->storeFile(
+            $image->getRealPath(),
+            $image->getMimeType()
+        );
+    }
+    // [END add_image]
     if (!empty($book['publishedDate'])) {
         $d = new \DateTime($book['publishedDate']);
         $book['publishedDate'] = $d->setTimezone(
@@ -128,7 +151,13 @@ $app->post('/books/{id}/delete', function ($id) use ($app) {
     $book = $model->read($id);
     if ($book) {
         $model->delete($id);
-
+        // [START delete_image]
+        if ($book['imageUrl']) {
+            /** @var CloudStorage $storage */
+            $storage = $app['bookshelf.storage'];
+            $storage->deleteFile($book['imageUrl']);
+        }
+        // [END delete_image]
         return $app->redirect('/books/', Response::HTTP_SEE_OTHER);
     }
 

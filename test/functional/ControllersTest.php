@@ -21,6 +21,7 @@ use Google\Cloud\Samples\Bookshelf\DataModel\CloudSql;
 use Google\Cloud\Samples\Bookshelf\FileSystem\FakeFileStorage;
 use Monolog\Handler\TestHandler;
 use Silex\WebTestCase;
+use Symfony\Component\HttpFoundation\File\UploadedFile;
 
 /**
  * Test for application controllers
@@ -79,11 +80,22 @@ class ControllersTest extends WebTestCase
         $submitButton = $crawler->selectButton('submit');
         $form = $submitButton->form();
 
+        $photo = new UploadedFile(
+            __DIR__ . '/../lib/CatHat.jpg',
+            'CatHat.jpg',
+            'image/jpg',
+            filesize(__DIR__ . '/../lib/CatHat.jpg')
+        );
         $crawler = $client->submit($form, array(
             'title' => 'The Cat in the Hat',
             'author' => 'Dr. Suess',
             'publishedDate' => '1957-01-01',
+            'image' => $photo,
         ));
+        $this->assertEquals(
+            'img1',
+            $crawler->filter('.book-image')->attr('src')
+        );
 
         // Capture the delete button.
         $deleteCatHat = $crawler->selectButton('submit');
@@ -138,10 +150,17 @@ class ControllersTest extends WebTestCase
         $submitButton = $crawler->selectButton('submit');
         $form = $submitButton->form();
 
+        $photo = new UploadedFile(
+            __DIR__ . '/../lib/CatHat.jpg',
+            'CatHat.jpg',
+            'image/jpg',
+            filesize(__DIR__ . '/../lib/CatHat.jpg')
+        );
         $crawler = $client->submit($form, array(
             'title' => 'Where the Red Fern Grows',
             'author' => 'Will Rawls',
             'publishedDate' => '1961',
+            'image' => $photo,
         ));
 
         // Make sure the page contents match what we just submitted.
@@ -162,6 +181,7 @@ class ControllersTest extends WebTestCase
             'title' => 'Where the Red Fern Grows',
             'author' => 'Wilson Rawls',
             'publishedDate' => '1961',
+            'image' => $photo,
         ));
 
         // Make sure the page contents match what we just submitted.

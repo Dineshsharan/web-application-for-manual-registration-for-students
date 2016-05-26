@@ -18,6 +18,7 @@
 use Google\Cloud\Samples\Bookshelf\DataModel\CloudSql;
 use Google\Cloud\Samples\Bookshelf\DataModel\Datastore;
 use Google\Cloud\Samples\Bookshelf\DataModel\MongoDb;
+use Google\Cloud\Samples\Bookshelf\FileSystem\CloudStorage;
 
 require_once __DIR__ . '/../vendor/autoload.php';
 
@@ -27,6 +28,9 @@ require __DIR__ . '/../src/controllers.php';
 
 /** @var array $config */
 $config = $app['config'];
+
+// Cloud Storage
+$app['bookshelf.storage'] = new CloudStorage($config['google_project_id']);
 
 // Data Model
 switch ($config['bookshelf_backend']) {

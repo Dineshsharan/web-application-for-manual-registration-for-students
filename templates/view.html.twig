@@ -34,6 +34,12 @@
 
 {# [START book_details] #}
 <div class="media">
+  {# [START book_image] #}
+  <div class="media-left">
+    <img class="book-image"
+         src="{{ book.imageUrl ?: 'http://placekitten.com/g/128/192' }}">
+  </div>
+  {# [END book_image] #}
   <div class="media-body">
     <h4 class="book-title">
       {{book.title}}

@@ -28,9 +28,15 @@
 {% for book in books %}
 <div class="media">
   <a href="/books/{{book.id}}">
+    {# [START book_image] #}
     <div class="media-left">
-      <img src="http://placekitten.com/g/128/192">
+      {% if book.imageUrl %}
+        <img src="{{book.imageUrl}}">
+      {% else %}
+        <img src="http://placekitten.com/g/128/192">
+      {% endif %}
     </div>
+    {# [END book_image] #}
     <div class="media-body">
       <h4>{{book.title}}</h4>
       <p>{{book.author}}</p>
