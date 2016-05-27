@@ -23,6 +23,7 @@ namespace Google\Cloud\Samples\Bookshelf;
  */
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Google\Cloud\Samples\Bookshelf\PubSub\Worker;
 use Google\Cloud\Samples\Bookshelf\DataModel\DataModelInterface;
 use Google\Cloud\Samples\Bookshelf\FileSystem\CloudStorage;
 
@@ -80,7 +81,18 @@ $app->post('/books/add', function (Request $request) use ($app) {
         $book['createdBy'] = $app['user']['name'];
         $book['createdById'] = $app['user']['id'];
     }
-    $id = $model->create($book);
+
+    if ($id = $model->create($book)) {
+        /** @var Google\Cloud\PubSub\PubSubClient $pubsub */
+        $pubsub = $app['pubsub_client'];
+        $topic = $pubsub->topic(Worker::TOPIC_NAME);
+        $topic->publish([
+            'data' => 'Updated Book',
+            'attributes' => [
+                'id' => $id
+            ]
+        ]);
+    }
 
     return $app->redirect("/books/$id");
 });
@@ -141,6 +153,16 @@ $app->post('/books/{id}/edit', function (Request $request, $id) use ($app) {
             new \DateTimeZone('UTC'))->format("Y-m-d\TH:i:s\Z");
     }
     if ($model->update($book)) {
+        /** @var Google\Cloud\PubSub\PubSubClient $pubsub */
+        $pubsub = $app['pubsub_client'];
+        $topic = $pubsub->topic(Worker::TOPIC_NAME);
+        $topic->publish([
+            'data' => 'New Book',
+            'attributes' => [
+                'id' => $id
+            ]
+        ]);
+
         return $app->redirect("/books/$id");
     }
 
@@ -178,7 +200,11 @@ $app->post('/books/{id}/delete', function ($id) use ($app) {
 $app->get('/login', function () use ($app) {
     /** @var Google_Client $client */
     $client = $app['google_client'];
+    /** @var Symfony\Component\Routing\Generator\UrlGenerator $urlGen */
+    $urlGen = $app['url_generator'];
+    $redirectUri = $urlGen->generate('login_callback', [], $urlGen::ABSOLUTE_URL);
 
+    $client->setRedirectUri($redirectUri);
     $scopes = [ \Google_Service_Oauth2::USERINFO_PROFILE ];
     $authUrl = $client->createAuthUrl($scopes);
 

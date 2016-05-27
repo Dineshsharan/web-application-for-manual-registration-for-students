@@ -1,0 +1,3 @@
+runtime: php
+vm: true
+entrypoint: php src/worker.php

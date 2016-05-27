@@ -20,10 +20,12 @@
  * Create a new Silex Application with Twig.  Configure it for debugging.
  * Follows Silex Skeleton pattern.
  */
+
 use Google\Cloud\Samples\Bookshelf\DataModel\CloudSql;
 use Google\Cloud\Samples\Bookshelf\DataModel\Datastore;
 use Google\Cloud\Samples\Bookshelf\DataModel\MongoDb;
 use Google\Cloud\Logger\AppEngineFlexHandler;
+use Google\Cloud\PubSub\PubSubClient;
 use Silex\Application;
 use Silex\Provider\SessionServiceProvider;
 use Silex\Provider\TwigServiceProvider;
@@ -75,16 +77,27 @@ if (isset($_SERVER['GAE_VM']) && $_SERVER['GAE_VM'] === 'true') {
 // create the google authorization client
 // [START google_client]
 $app['google_client'] = function ($app) {
-    /** @var Symfony\Component\Routing\Generator\UrlGenerator $urlGen */
-    $urlGen = $app['url_generator'];
-    $redirectUri = $urlGen->generate('login_callback', [], $urlGen::ABSOLUTE_URL);
-    return new Google_Client([
+    $client = new Google_Client([
         'client_id'     => $app['config']['google_client_id'],
         'client_secret' => $app['config']['google_client_secret'],
-        'redirect_uri'  => $redirectUri,
     ]);
+
+    $client->setHttpClient(new GuzzleHttp\Client(['proxy' => 'localhost:8888', 'verify' => false]));
+
+    return $client;
 };
 // [END google_client]
+
+// [START pubsub_client]
+$app['pubsub_client'] = function ($app) {
+    // create the pubsub client
+    $pubsub = new PubSubClient([
+        'projectId' => $app['config']['google_project_id'],
+    ]);
+
+    return $pubsub;
+};
+// [END pubsub_client]
 
 // determine the datamodel backend using the app configuration
 $app['bookshelf.model'] = function ($app) {
