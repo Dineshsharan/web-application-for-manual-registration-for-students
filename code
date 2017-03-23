@@ -1,0 +1,146 @@
+StudentRegistration
+│   index.html
+│   login.html
+│
+└───WEB-INF
+    │   web.xml
+    │
+    └───classes
+            login.class
+            login.java
+            regform.class
+            regform.java
+
+
+Index.html
+
+<html>
+<head>
+<title>registration</title>
+</head>
+<body>
+<form method="post" action="reg">
+NAME:<input type="text"name="t1"/><br>
+ENROLLMENT:<input type="text"name="t2"/><br>
+PASSWORD:<input type="password"name="t3"/><br>
+<input type="submit"value="send"/><br>
+</form>
+<a href='login.html'>if already registered plz login</a>
+</body>
+</html>
+
+
+login.html
+
+<html>
+<head>
+<title>login</title>
+</head>
+<body>
+<form method="post" action="login">
+  <h2>ENTER VALID USER NAME AND PASSWORD</h2>
+  <p><strong>USER NAME:</strong>
+<input type="text"name="t1"/><br>
+    <strong>PASSWORD:</strong>
+    <input type="password"name="t2"/><br>
+  <input type="submit"value="Login"/><br>
+  </p>
+</form>
+<a href='index.html'>new user create account</a>
+</body>
+</html>
+
+
+web.xml
+
+<web-app>
+ <servlet>
+  <servlet-name>s1</servlet-name>
+  <servlet-class>regform</servlet-class>
+ </servlet>
+ <servlet-mapping>
+  <servlet-name>s1</servlet-name>
+  <url-pattern>/reg</url-pattern>
+ </servlet-mapping>
+ 
+ <servlet>
+  <servlet-name>s2</servlet-name>
+  <servlet-class>login</servlet-class>
+ </servlet>
+ <servlet-mapping>
+  <servlet-name>s2</servlet-name>
+  <url-pattern>/login</url-pattern>
+ </servlet-mapping>
+</web-app>
+
+
+regform.java
+
+import java.io.*;
+import javax.servlet.*;
+import javax.servlet.http.*;
+import java.sql.*;
+public class regform extends HttpServlet{
+ public void doPost(HttpServletRequest req,HttpServletResponse res)throws IOException,ServletException{
+  res.setContentType("text/html");
+  PrintWriter out=res.getWriter();
+  String n=req.getParameter("t1");
+  String e=req.getParameter("t2");
+  String p=req.getParameter("t3");
+  try{
+   Class.forName("sun.jdbc.odbc.JdbcOdbcDriver");
+   Connection con=DriverManager.getConnection("jdbc:odbc:school");
+   PreparedStatement st=con.prepareStatement("insert into student values(?,?,?)");
+   st.clearParameters();
+   st.setString(1,n);
+   st.setInt(2,Integer.parseInt(e));
+   st.setString(3,p);
+   st.executeUpdate();
+   con.close();
+   
+  }catch(Exception ex){
+   ex.printStackTrace(System.out);
+  }
+  out.write("ur account has been created, <a href='login.html'>u can login now</a>");
+  
+ }
+}
+
+
+login.java
+
+import java.io.*;
+import javax.servlet.*;
+import javax.servlet.http.*;
+import java.sql.*;
+public class login extends HttpServlet{
+ public void doPost(HttpServletRequest req,HttpServletResponse res)throws IOException,ServletException{
+  res.setContentType("text/html");
+  PrintWriter out=res.getWriter();
+  String n=req.getParameter("t1");
+  String p=req.getParameter("t2");
+  
+  try{
+   Class.forName("sun.jdbc.odbc.JdbcOdbcDriver");
+   Connection con=DriverManager.getConnection("jdbc:odbc:school");
+   PreparedStatement st=con.prepareStatement("select * from student where name=? and pass=?");
+   st.clearParameters();
+   st.setString(1,n);
+   st.setString(2,p);
+   ResultSet rs=st.executeQuery();
+   boolean b=rs.next();
+   if(b==true){
+    out.write("WELCOME");
+    
+   }
+   else{
+    out.write("Login failed <a href='login.html'>TRY AGAIN</a>");
+    
+   }
+   con.close();
+   
+  }catch(Exception ex){
+   ex.printStackTrace(System.out);
+  }
+ }
+}
